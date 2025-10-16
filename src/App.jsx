@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import { useState, useRef } from "react";
 import * as XLSX from "xlsx";
 
 export default function App() {
@@ -24,8 +24,10 @@ export default function App() {
   function onFile(e) {
     const f = e.target.files?.[0];
     if (!f) return;
+
     setFileName(f.name);
     const reader = new FileReader();
+
     reader.onload = (evt) => {
       const data = evt.target.result;
       const wb = XLSX.read(data, { type: "array" });
@@ -35,75 +37,70 @@ export default function App() {
         raw: false,
         defval: "",
       });
+
       if (!rows.length) return;
 
-      // Si no hay header explícito para fecha, intentar detectar columna de fechas
       const headerRow = rows[0].map((h) => String(h).trim());
+      const dataRows = rows.slice(1);
+
+      // 🔹 Detectar índice del campo "Message Text"
       let messageTextIdx = headerRow.findIndex((h) =>
         /message\s*text/i.test(h)
       );
-
-      // Buscar todas las fechas en el archivo (en cualquier columna)
-      const datePattern =
-        /\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\s+\d{1,2}:\d{2}:\d{2}\b/;
-      const allDates = [];
-      for (const row of rows) {
-        for (const cell of row) {
-          const match = String(cell).match(datePattern);
-          if (match) allDates.push(match[0]);
-        }
-      }
-      console.log("🚀 ~ onFile ~ allDates:", allDates);
-
-      // Buscar columna Message Text si no existe header
-      if (messageTextIdx === -1) {
+      if (messageTextIdx === -1)
         messageTextIdx = headerRow.findIndex((h) => /text/i.test(h));
-        if (messageTextIdx === -1) messageTextIdx = 0; // fallback primera columna
-      }
+      if (messageTextIdx === -1) messageTextIdx = 0; // fallback
 
-      const dataRows = rows.slice(1);
+      // 🔹 Procesar registros a partir del Message Text (con propagación de fechas)
       const processed = buildRecordsFromMessageText(dataRows, messageTextIdx);
 
-      const combined = processed.map((a, i) => ({
-        ...a,
-        "Date/Time": allDates[i],
-      }));
-
-      setPreviewRows(combined);
+      setPreviewRows(processed);
     };
+
     reader.readAsArrayBuffer(f);
   }
 
-  function buildRecordsFromMessageText(rows, msgIdx, dateIdx) {
+  // 🧩 Construye los registros agrupando líneas y propagando la última fecha conocida
+  function buildRecordsFromMessageText(rows, msgIdx) {
     const texts = [];
     const dates = [];
     let buffer = [];
+    let lastDate = ""; // guarda la última fecha detectada
+
+    const datePattern =
+      /\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\s+\d{1,2}:\d{2}:\d{2}\b/;
 
     for (let i = 0; i < rows.length; i++) {
       const message = String(rows[i]?.[msgIdx] || "").trim();
-      const dateCandidate = String(rows[i]?.[dateIdx] || "").trim();
-      if (
-        dateCandidate &&
-        /\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/.test(dateCandidate)
-      ) {
-        dates.push(dateCandidate);
-      }
-      if (message) buffer.push(message);
+      if (!message) continue;
+
+      // 🔹 Buscar una fecha dentro de toda la fila
+      const rowStr = rows[i].join(" ");
+      const match = rowStr.match(datePattern);
+      if (match) lastDate = match[0]; // actualizar fecha si existe
+
+      buffer.push(message);
+
+      // 🔹 Si termina con punto, se considera un bloque completo
       if (message.endsWith(".")) {
         texts.push(buffer.join(" ").replace(/\s+/g, " ").trim());
+        dates.push(lastDate || "");
         buffer = [];
       }
     }
 
-    if (buffer.length) texts.push(buffer.join(" ").replace(/\s+/g, " ").trim());
+    // 🔹 Si queda texto sin cerrar (sin punto final)
+    if (buffer.length) {
+      texts.push(buffer.join(" ").replace(/\s+/g, " ").trim());
+      dates.push(lastDate || "");
+    }
 
-    // Si hay más fechas que textos, recorta; si hay menos, rellena
-    while (dates.length < texts.length) dates.push("");
-
-    return texts.map((text, idx) => parseMessageText(text, dates[idx]));
+    // 🔹 Generar los registros finales
+    return texts.map((text, idx) => parseMessageTextWithDate(text, dates[idx]));
   }
 
-  function parseMessageText(text, date) {
+  // 🧠 Extrae los campos a partir del texto
+  function parseMessageTextWithDate(text, date) {
     const numero = text.match(/\(Card:\s*(\d+)\)/i)?.[1] || "";
     const name = text.match(/'(.*?)'/)?.[1] || "";
     const door = text.match(/en\s+'(.*?)'/i)?.[1] || "";
@@ -115,11 +112,13 @@ export default function App() {
       "Door Name": door,
       "Message Type": type,
       "Message Text": text,
-      "Date/Time": date,
+      "Date/Time": date || "",
     };
   }
 
+  // 📥 Exporta el Excel corregido
   function downloadFixed() {
+    if (!previewRows.length) return;
     const ws = XLSX.utils.json_to_sheet(previewRows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Reporte");
@@ -138,6 +137,7 @@ export default function App() {
           Corrector de Reportes C-CURE → Excel
         </h1>
 
+        {/* 🔹 Panel principal */}
         <div className="bg-white rounded-2xl shadow p-6 space-y-6">
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
             <div>
@@ -152,6 +152,7 @@ export default function App() {
                 className="mt-2 block"
               />
             </div>
+
             {previewRows.length > 0 && (
               <button
                 className="px-4 py-2 rounded-xl bg-black text-white hover:opacity-90"
@@ -162,6 +163,7 @@ export default function App() {
             )}
           </div>
 
+          {/* 🔹 Vista previa */}
           {previewRows.length > 0 && (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm border border-gray-200 rounded-lg">
@@ -192,6 +194,7 @@ export default function App() {
                   ))}
                 </tbody>
               </table>
+
               {previewRows.length > 100 && (
                 <div className="text-xs text-gray-500 mt-2">
                   Mostrando 100 primeras filas de {previewRows.length}.
