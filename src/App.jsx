@@ -140,26 +140,67 @@ export default function App() {
         {/* 🔹 Panel principal */}
         <div className="bg-white rounded-2xl shadow p-6 space-y-6">
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-            <div>
-              <label className="block text-sm font-medium">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-gray-700">
                 Subir archivo (.xls / .xlsx)
               </label>
+
+              {/* Input oculto */}
               <input
                 ref={inputRef}
                 type="file"
                 accept=".xls,.xlsx"
                 onChange={onFile}
-                className="mt-2 block"
+                className="hidden"
               />
+
+              {/* Botón visual */}
+              <button
+                onClick={() => inputRef.current?.click()}
+                className="flex items-center justify-center gap-2 px-4 py-2 w-fit rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all shadow-sm"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="w-5 h-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 16.5V9.75m0 0L9.75 12m2.25-2.25L14.25 12M4.5 19.5h15a2.25 2.25 0 002.25-2.25v-9A2.25 2.25 0 0019.5 6h-15A2.25 2.25 0 002.25 8.25v9A2.25 2.25 0 004.5 19.5z"
+                  />
+                </svg>
+                Seleccionar archivo
+              </button>
+
+              {/* Mostrar nombre del archivo si existe */}
+              {fileName && (
+                <p className="text-sm text-gray-500 mt-1 italic">
+                  Archivo seleccionado:{" "}
+                  <span className="font-medium">{fileName}</span>
+                </p>
+              )}
             </div>
 
             {previewRows.length > 0 && (
-              <button
-                className="px-4 py-2 rounded-xl bg-black text-white hover:opacity-90"
-                onClick={downloadFixed}
-              >
-                Descargar Excel corregido
-              </button>
+              <div className="flex gap-3">
+                <button
+                  className="px-4 py-2 rounded-xl bg-black text-white hover:opacity-90 transition-all"
+                  onClick={downloadFixed}
+                >
+                  Descargar Excel corregido
+                </button>
+
+                <button
+                  onClick={reset}
+                  className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-all shadow-sm"
+                >
+                  Resetear
+                </button>
+              </div>
             )}
           </div>
 
