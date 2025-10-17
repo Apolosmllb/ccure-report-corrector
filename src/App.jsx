@@ -144,11 +144,11 @@ export default function App() {
     const ws = XLSX.utils.json_to_sheet(previewRows);
 
     ws["!cols"] = [
-      { wch: 10 }, // Card Number
-      { wch: 50 }, // Cardholder Name
-      { wch: 30 }, // Door Name
+      { wch: 8 }, // Card Number
+      { wch: 60 }, // Cardholder Name
+      { wch: 33 }, // Door Name
       { wch: 12 }, // Message Type
-      ...(dev ? [{ wch: 100 }] : []), // Message
+      ...(dev ? [{ wch: 120 }] : []), // Message
       { wch: 20 }, // Message Date/Time
     ];
 
@@ -165,9 +165,17 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="max-w-6xl mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-6">
-          Corrector de Reportes C-CURE → Excel
-        </h1>
+        {/* 🔹 Encabezado con logo y título */}
+        <div className="flex items-center gap-2 mb-6">
+          <img
+            src="/logo.png"
+            alt="NM Inmobiliaria Logo"
+            className="h-32 object-contain rounded-md"
+          />
+          <h1 className="text-2xl font-bold text-gray-800">
+            Corrector de Reportes C-CURE → Excel
+          </h1>
+        </div>
 
         {/* 🔹 Panel principal */}
         <div className="bg-white rounded-2xl shadow p-6 space-y-6">
