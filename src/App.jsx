@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import * as XLSX from "xlsx";
+import { dev } from ".";
 
 export default function App() {
   const [previewRows, setPreviewRows] = useState([]);
@@ -7,12 +8,12 @@ export default function App() {
   const inputRef = useRef(null);
 
   const TARGET_FIELDS = [
-    "Numero",
-    "Name",
+    "Card",
+    "Cardholder Name",
     "Door Name",
     "Message Type",
-    "Message Text",
-    "Date/Time",
+    ...(dev ? ["Message Text"] : []),
+    "Message Date/Time",
   ];
 
   function reset() {
@@ -81,9 +82,28 @@ export default function App() {
 
       buffer.push(message);
 
-      // 🔹 Si termina con punto, se considera un bloque completo
-      if (message.endsWith(".")) {
-        texts.push(buffer.join(" ").replace(/\s+/g, " ").trim());
+      // 🔹 Cerrar bloque solo si el punto marca realmente el final del mensaje
+      const trimmed = message.trim();
+      const endsWithDot = /\.\s*$/.test(trimmed);
+
+      // Última palabra (para detectar abreviaturas)
+      const lastWord = trimmed.split(/\s+/).pop();
+
+      // Detectar abreviaturas tipo "A.", "M.", "S.A.", etc.
+      const isAbbrev =
+        /^[A-ZÁÉÍÓÚÑ]{1,3}\.$/i.test(lastWord) || // "A.", "M."
+        /^[A-ZÁÉÍÓÚÑ]{1,2}\.[A-ZÁÉÍÓÚÑ]{1,2}\.$/i.test(lastWord); // "S.A."
+
+      // Detectar fin real: punto final luego de comilla, paréntesis o palabra larga
+      const isSentenceEnd =
+        endsWithDot &&
+        (/'\s*\.\s*$/.test(trimmed) ||
+          /[)\]]\.\s*$/.test(trimmed) ||
+          !isAbbrev);
+
+      if (isSentenceEnd) {
+        const fullMsg = buffer.join(" ").replace(/\s+/g, " ").trim();
+        texts.push(fullMsg);
         dates.push(lastDate || "");
         buffer = [];
       }
@@ -106,13 +126,15 @@ export default function App() {
     const door = text.match(/en\s+'(.*?)'/i)?.[1] || "";
     const type = text.match(/^(Admitido|Denegado|Rechazado)/i)?.[1] || "";
 
+    const numberCard = name.match(/^(\d{3,})/);
+
     return {
-      Numero: numero,
-      Name: name,
+      Card: numberCard?.[1] ?? numero,
+      "Cardholder Name": name,
       "Door Name": door,
       "Message Type": type,
-      "Message Text": text,
-      "Date/Time": date || "",
+      ...(dev ? { "Message Text": text } : {}),
+      "Message Date/Time": date || "",
     };
   }
 
@@ -120,6 +142,16 @@ export default function App() {
   function downloadFixed() {
     if (!previewRows.length) return;
     const ws = XLSX.utils.json_to_sheet(previewRows);
+
+    ws["!cols"] = [
+      { wch: 10 }, // Card Number
+      { wch: 50 }, // Cardholder Name
+      { wch: 30 }, // Door Name
+      { wch: 12 }, // Message Type
+      ...(dev ? [{ wch: 100 }] : []), // Message
+      { wch: 20 }, // Message Date/Time
+    ];
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Reporte");
     XLSX.writeFile(
