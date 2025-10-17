@@ -147,7 +147,7 @@ export default function App() {
       { wch: 8 }, // Card Number
       { wch: 60 }, // Cardholder Name
       { wch: 33 }, // Door Name
-      { wch: 12 }, // Message Type
+      { wch: 15 }, // Message Type
       ...(dev ? [{ wch: 120 }] : []), // Message
       { wch: 20 }, // Message Date/Time
     ];
