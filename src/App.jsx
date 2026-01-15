@@ -127,9 +127,11 @@ export default function App() {
     const type = text.match(/^(Admitido|Denegado|Rechazado)/i)?.[1] || "";
 
     const numberCard = name.match(/^(\d{3,})/);
+    const cardFromText =
+      text.match(/\(Card:\s*(\d+)\s+Facility:/i)?.[1] || "";
 
     return {
-      Card: numberCard?.[1] ?? numero,
+      Card: cardFromText ?? numberCard?.[1] ?? numero ?? 'NO PROVIDED',
       "Cardholder Name": name,
       "Door Name": door,
       "Message Type": type,
